@@ -1,2 +1,2 @@
 Arithmetic Overflow:
-	- Signal 'S' may overflow.
+	Line 5: Signal 'S' may overflow.

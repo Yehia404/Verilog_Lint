@@ -7,35 +7,37 @@ class VerilogLinter:
     
     def parse_verilog(self, file_path):
         with open(file_path, 'r') as f:
-            verilog_code = f.read()
+            verilog_code = f.readlines()
         
         # Perform parsing logic here
         
-        # Example parsing for arithmetic overflow
-        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
-        matches = re.findall(overflow_pattern, verilog_code)
-        for match in matches:
-            signal = match[0]
-            op1 = match[1]
-            operator = match[2]
-            op2 = match[3]
-            
-            # Check for overflow condition and add error if necessary
-            if operator in ['+', '-']:
-                self.errors['Arithmetic Overflow'].append(f"Signal '{signal}' may overflow.")
-            elif operator == '*':
-                self.errors['Arithmetic Overflow'].append(f"Signal '{signal}' may cause multiplication overflow.")
-            elif operator == '/':
-                self.errors['Arithmetic Overflow'].append(f"Signal '{signal}' may cause division overflow.")
-
+        self.check_arithmetic_overflow(verilog_code)
         # Implement similar logic for other violations
         
+    def check_arithmetic_overflow(self, verilog_code):
+        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
+        for line_number, line in enumerate(verilog_code, start=1):
+            matches = re.findall(overflow_pattern, line)
+            for match in matches:
+                signal = match[0]
+                op1 = match[1]
+                operator = match[2]
+                op2 = match[3]
+                
+                # Check for overflow condition and add error if necessary
+                if operator in ['+', '-']:
+                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
+                elif operator == '*':
+                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
+                elif operator == '/':
+                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
+
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:
             for violation, lines in self.errors.items():
                 f.write(f"{violation}:\n")
-                for line in lines:
-                    f.write(f"\t- {line}\n")
+                for line_number, line in lines:
+                    f.write(f"\tLine {line_number}: {line}\n")
     
 # Example usage
 linter = VerilogLinter()
