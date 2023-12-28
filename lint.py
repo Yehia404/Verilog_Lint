@@ -12,6 +12,7 @@ class VerilogLinter:
         # Perform parsing logic here
         
         self.check_arithmetic_overflow(verilog_code)
+        self.check_non_full_parallel_case(verilog_code)
         # Implement similar logic for other violations
         
     def check_arithmetic_overflow(self, verilog_code):
@@ -31,6 +32,48 @@ class VerilogLinter:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
                 elif operator == '/':
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
+
+    def check_non_full_parallel_case(self, verilog_code):
+        non_full_parallel_patterns = [
+            (r'\bif\s*\([^)]+\)\s*begin\s*(?:\n\s*[^{]+\n)+\s*end\b', "If statement"),
+            (r'\bcase\s*\([^)]+\)\s*(?:\n\s*[^{]+\n)+\s*endcase\b', "Case statement")
+        ]
+
+        for line_number, line in enumerate(verilog_code, start=1):
+            for pattern, violation_type in non_full_parallel_patterns:
+                matches = re.findall(pattern, line, re.MULTILINE)
+                for match in matches:
+                    body = match.strip()
+                    body_lines = body.split('\n')
+                    body_lines = [line.strip() for line in body_lines if line.strip() != '']
+
+                    if violation_type == "If statement":
+                        # Check if the if statement is incomplete (missing else part)
+                        if "else" not in body:
+                            self.errors['Non Full/Parallel'].append((line_number, "Incomplete if statement (missing else part)."))
+
+                        # Check if there are matching conditions in if and elseif
+                        conditions = [re.search(r'if\s*\((.*?)\)', line).group(1) for line in body_lines if "if" in line]
+                        if len(set(conditions)) != len(conditions):
+                            self.errors['Non Full/Parallel'].append((line_number, "Matching conditions in if statement."))
+
+                    elif violation_type == "Case statement":
+                        # Check if the case statement has a missing default or non-full cases
+                        case_body = body_lines[1:-1]  # Exclude the first and last lines (case and endcase)
+                        num_cases = len(case_body)
+                        has_default = any("default" in line for line in case_body)
+
+                        if num_cases == 0 or not has_default:
+                            self.errors['Non Full/Parallel'].append((line_number, "Incomplete case statement (missing default or cases)."))
+
+                        # Check if there are matching cases
+                        cases = [re.search(r'(\bcase\b|\bdefault\b)\s*\((.*?)\)', line).group(2) for line in case_body]
+                        if len(set(cases)) != len(cases):
+                            self.errors['Non Full/Parallel'].append((line_number, "Matching cases in case statement."))
+
+
+
+
 
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:
