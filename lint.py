@@ -51,10 +51,9 @@ class VerilogLinter:
         for line_number, line in enumerate(verilog_code, start=1):
             matches = re.findall(usage_pattern, line)
             for match in matches:
-                signal = signal = match[0]
+                signal = match[0]
                 
-                if signal.startswith('$'):  # Ignore system tasks/functions
-                    continue
+            
 
                 if signal not in self.initialized_registers:
                     self.errors['Uninitialized Register Usage'].append((line_number, f"Register '{signal}' used before initialization."))

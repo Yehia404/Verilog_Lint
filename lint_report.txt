@@ -1,2 +1,9 @@
 Arithmetic Overflow:
-	Line 5: Signal 'S' may overflow.
+	Line 9: Signal 's2' may overflow.
+	Line 10: Signal 's3' may cause multiplication overflow.
+	Line 14: Signal 's4' may overflow.
+	Line 16: Signal 's6' may cause multiplication overflow.
+Uninitialized Register Usage:
+	Line 14: Register 's4' used before initialization.
+	Line 15: Register 's5' used before initialization.
+	Line 16: Register 's6' used before initialization.
