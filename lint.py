@@ -4,6 +4,7 @@ from collections import defaultdict
 class VerilogLinter:
     def __init__(self):
         self.errors = defaultdict(list)
+        self.initialized_registers = set()
     
     def parse_verilog(self, file_path):
         with open(file_path, 'r') as f:
@@ -12,8 +13,10 @@ class VerilogLinter:
         # Perform parsing logic here
         
         self.check_arithmetic_overflow(verilog_code)
+        self.check_uninitialized_registers(verilog_code)
         # Implement similar logic for other violations
         
+       
     def check_arithmetic_overflow(self, verilog_code):
         overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
         for line_number, line in enumerate(verilog_code, start=1):
@@ -31,7 +34,35 @@ class VerilogLinter:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
                 elif operator == '/':
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
+ 
 
+    def check_uninitialized_registers(self,verilog_code):
+        declaration_pattern =r'\b(?:reg|wire)\s*([^;]+)\b'
+        for line_number, line in enumerate(verilog_code, start=1):
+            matches = re.findall(declaration_pattern, line)
+            print(matches)
+            for match in matches:
+                signal_names = re.findall(r'\b(\w+)\b', match)
+                for signal in signal_names:
+                    self.initialized_registers.add(signal)
+                        
+                
+        usage_pattern = r'\b(\w+)\s*=\s*([^;]+)\b'
+        for line_number, line in enumerate(verilog_code, start=1):
+            matches = re.findall(usage_pattern, line)
+            for match in matches:
+                signal = signal = match[0]
+                
+                if signal.startswith('$'):  # Ignore system tasks/functions
+                    continue
+
+                if signal not in self.initialized_registers:
+                    self.errors['Uninitialized Register Usage'].append((line_number, f"Register '{signal}' used before initialization."))
+        
+    
+    
+    
+    
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:
             for violation, lines in self.errors.items():
@@ -41,5 +72,5 @@ class VerilogLinter:
     
 # Example usage
 linter = VerilogLinter()
-linter.parse_verilog('fulladder.v')
+linter.parse_verilog('Uninitializedreg.v')
 linter.generate_report('lint_report.txt')
