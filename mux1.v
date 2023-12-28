@@ -2,12 +2,9 @@ module mux_always (in0, in1, sel, out);
 input in0, in1, sel;
 output reg out;
 
-always @(*) begin
-if (sel)
+always @(*)
+if (sel) begin
     out = in1;
-else
-    out = in0;
-
 end
 
 endmodule

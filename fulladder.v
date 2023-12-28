@@ -1,8 +1,8 @@
 module adder (X, Y,S);
 input X,Y;
-output S;
+output [1:0]S;
 
-assign S= X+Y;
+assign S = X+Y;
 endmodule
 
 
