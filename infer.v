@@ -1,5 +1,6 @@
 module Test;
-  reg [1:0] a, b;
+  reg [1:0] a;
+  reg [1:0] b;
   reg out;
 
   always @(a, b)
@@ -10,26 +11,26 @@ module Test;
       out <= 0;
   end
 
-  always @(a, b)
+  always @(a)
   begin
-    case ({a, b})
+    case (a)
       2'b00: out <= 0;
       2'b01: out <= 1;
       2'b10: out <= 0;
     endcase
   end
 
-  always @(a, b)
+  always @(b)
   begin
-    case ({a, b})
+    case (b)
       2'b00: out <= 0;
       2'b01: out <= 1;
     endcase
   end
 
-  always @(a, b)
+  always @(a)
   begin
-    case ({a, b})
+    case (a)
       2'b00: out <= 0;
       2'b01: out <= 1;
       2'b10: out <= 0;
