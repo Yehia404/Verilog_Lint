@@ -20,9 +20,24 @@ class VerilogLinter:
         
        
     def check_arithmetic_overflow(self, verilog_code):
+        variable_bits = {}
         overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
-        for line_number, line in enumerate(verilog_code, start=1):
-            matches = re.findall(overflow_pattern, line)
+        register_pattern = r'\b(input|output|reg|output \s* reg|wire)\s*(\[\d+:\d+\])?\s*(\w+)\b'
+        for variable in verilog_code:
+            matches = re.findall(register_pattern, variable)
+            for match in matches:
+                variable_name = match[2]
+                variable_bit = match[1]
+                if variable_bit == '':
+                    variable_bits[variable_name] = 1
+                else:
+                    num1 = int(variable_bit[1])
+                    num2 = int(variable_bit[3])
+                    result = abs(num1 - num2) + 1
+                    variable_bits[variable_name] = result
+        for line_number, operation in enumerate(verilog_code, start=1):
+            matches = re.findall(overflow_pattern, operation)
+
             for match in matches:
                 signal = match[0]
                 op1 = match[1]
@@ -30,11 +45,13 @@ class VerilogLinter:
                 op2 = match[3]
                 
                 # Check for overflow condition and add error if necessary
-                if operator in ['+', '-']:
+                if operator  == '+' and variable_bits[signal] <= max(variable_bits[op1], variable_bits[op2]):
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
-                elif operator == '*':
+                elif operator == '-' and variable_bits[signal] < max(variable_bits[op1], variable_bits[op2]):
+                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
+                elif operator == '*' and variable_bits[signal] < variable_bits[op1] + variable_bits[op2]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
-                elif operator == '/':
+                elif operator == '/' and variable_bits[signal] < variable_bits[op1]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
         
     
@@ -68,42 +85,89 @@ class VerilogLinter:
 
 
 
-    def check_multi_driven_registers(self, verilog_code):
-        register_assignments = {}
-        always_blocks = self.extract_always_blocks(verilog_code)
-        for always_block in always_blocks:
-            # print(always_block)
-            assignments = self.extract_register_assignments(always_block)
-            # print(assignments)
+    # def check_multi_driven_registers(self, verilog_code):
+    #     register_assignments = {}
+    #     always_blocks = self.extract_always_blocks(verilog_code)
+    #     # print(always_blocks)  # List of always blocks and their contents
+    #     for always_block in always_blocks:
+    #         # print(always_block)
+    #         assignments = self.extract_register_assignments(always_block, verilog_code)
+            
+    #         print(assignments)
 
-            for assignment in assignments:
-                register_name = assignment[0]
-                line_number = assignment[1]
+    #         for assignment in assignments:
+    #             register_name = assignment[0]
+    #             line_number = assignment[1]
 
-                if register_name not in register_assignments:
-                    register_assignments[register_name] = line_number
-                else:
-                    previous_line_number = register_assignments[register_name]
-                    if previous_line_number != line_number:
-                        self.errors['Multi-Driven Registers'].append(
-                            (line_number, f"Register '{register_name}' is assigned in multiple always blocks. "
-                                        f"Previous assignment at line {previous_line_number}."))
+    #             if register_name not in register_assignments:
+    #                 register_assignments[register_name] = line_number
+    #             else:
+    #                 previous_line_number = register_assignments[register_name]
+    #                 if previous_line_number != line_number:
+    #                     self.errors['Multi-Driven Registers'].append(
+    #                         (line_number, f"Register '{register_name}' is assigned in multiple always blocks. "
+    #                                     f"Previous assignment at line {previous_line_number}."))
+                        
 
+    # def extract_always_blocks(self, verilog_code):
+    #     verilog_code_str = ''.join(verilog_code)  # Join the lines into a single string
+    #     # print(verilog_code_str)
+    #     always_block_pattern = r'\balways\s+@.*?\bend\b'
+    #     always_blocks = re.findall(always_block_pattern, verilog_code_str, re.DOTALL)
+    #     return always_blocks
+                
+                        
+    # def extract_register_assignments(self, always_block, verilog_code):
+    #     register_assignment_pattern = r'\b(\w+)\s*=\s*[^;]+\b'
+    #     assignments = re.findall(register_assignment_pattern, always_block)
+
+    #     return self.extract_register_line(verilog_code, assignments)
     
-    def extract_always_blocks(self, verilog_code):
-        verilog_code_str = ''.join(verilog_code)  # Join the lines into a single string
-        always_block_pattern = r'\balways\s+@.*?\bend\b'
-        always_blocks = re.findall(always_block_pattern, verilog_code_str, re.DOTALL)
-        return always_blocks
 
 
 
-    def extract_register_assignments(self, always_block):
+    # def extract_register_line(self, verilog_code, assignments):
+    #     assignment_line = []
+    #     for assignment in assignments:
+    #         for line_number, line in enumerate(verilog_code, start=1):
+    #             if assignment in line:
+    #                 assignment_line.append((assignment, line_number))
+    #     # print(assignment_line)
+        
+    #     return assignment_line
+    
+    def check_multi_driven_registers(self, verilog_code):
+        always_blocks = self.extract_always_blocks(verilog_code)
+        register_assignments = {}
+
+        for block in always_blocks:
+            assignments = self.extract_register_assignments(block, verilog_code)
+            for register, line_number in assignments:
+                if register in register_assignments:
+                    register_assignments[register].append(line_number)
+                else:
+                    register_assignments[register] = [line_number]
+
+        for register, line_numbers in register_assignments.items():
+            if len(line_numbers) > 1:
+                error_message = f"Register '{register}' is assigned in multiple always blocks at lines {', '.join(map(str, line_numbers))}."
+                self.errors['Multi-Driven Registers'].append(error_message)
+
+
+    def extract_register_assignments(self, always_block, verilog_code):
         register_assignment_pattern = r'\b(\w+)\s*=\s*[^;]+\b'
         assignments = re.findall(register_assignment_pattern, always_block)
-        print(assignments)
-        line_number = always_block.count('\n') + 1
-        return [(assignment, line_number) for assignment in assignments]
+        line_numbers = [i + 1 for i, line in enumerate(verilog_code) if re.search(register_assignment_pattern, line)]
+        return list(zip(assignments, line_numbers))
+    
+
+    def extract_always_blocks(self, verilog_code):
+        verilog_code_str = '\n'.join(verilog_code)  # Join the lines into a single string
+        always_block_pattern = r'\balways\s+@.*?\bend\b'
+        always_blocks = re.findall(always_block_pattern, verilog_code_str, re.DOTALL | re.MULTILINE)
+        return always_blocks
+    
+
     
     
     # def check_non_full_parallel_case(self, verilog_code):
@@ -157,5 +221,5 @@ class VerilogLinter:
     
 # Example usage
 linter = VerilogLinter()
-linter.parse_verilog('multi.v')
+linter.parse_verilog('fulladder.v')
 linter.generate_report('lint_report.txt')
