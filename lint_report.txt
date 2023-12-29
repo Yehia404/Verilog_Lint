@@ -1,3 +1,5 @@
-Multi-Driven Registers:
-	Line 13: Register 'reg1' is assigned in multiple always blocks. Previous assignment at line 6.
-	Line 16: Register 'reg2' is assigned in multiple always blocks. Previous assignment at line 10.
+Inferred Latches:
+	Line 5: Inferred latch found: 'if' statement without an 'else' branch.
+	Line 13: Inferred latch found: 'case' statement without a default case.
+	Line 22: Inferred latch found: 'case' statement without a default case.
+	Line 30: Inferred latch found: 'case' statement without a default case.

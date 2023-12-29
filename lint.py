@@ -16,6 +16,7 @@ class VerilogLinter:
         self.check_uninitialized_registers(verilog_code)
         # self.check_non_full_parallel_case(verilog_code)
         self.check_multi_driven_registers(verilog_code)
+        self.check_inferred_latches(verilog_code)
         # Implement similar logic for other violations
         
        
@@ -187,6 +188,50 @@ class VerilogLinter:
     #                         self.errors['Non Full/Parallel'].append((line_number, "Matching cases in case statement."))
 
 
+    def check_inferred_latches(self, verilog_code):
+        verilog_code_str = ''.join(verilog_code)
+        lines = verilog_code_str.splitlines()
+
+        for line_number, line in enumerate(lines, start=1):
+            if re.search(r'\balways\s+@', line):
+                always_block = self.extract_always_block(lines, line_number)
+
+                if re.search(r'\bif\b', always_block):
+                    if not self.has_else_branch(always_block):
+                        self.errors['Inferred Latches'].append(
+                            (line_number, "Inferred latch found: 'if' statement without an 'else' branch."))
+
+                if re.search(r'\bcase\b', always_block):
+                    if not self.has_default_case(always_block):
+                        self.errors['Inferred Latches'].append(
+                            (line_number, "Inferred latch found: 'case' statement without a default case."))
+
+
+    def has_else_branch(self, always_block):
+        if_match = re.findall(r'\bif\s*\([^)]+\)', always_block)
+
+        for if_statement in if_match:
+            if re.search(r'else', if_statement):
+                return True
+
+        return False
+
+    def has_default_case(self, always_block):
+        case_match = re.search(r'\bcase\s*\([^)]+\)', always_block)
+        if case_match:
+            case_block = always_block[case_match.end():]
+            return re.search(r'\bdefault\b', case_block)
+
+        return True
+
+
+
+
+
+
+
+
+
 
 
 
@@ -199,5 +244,5 @@ class VerilogLinter:
     
 # Example usage
 linter = VerilogLinter()
-linter.parse_verilog('multi.v')
+linter.parse_verilog('infer.v')
 linter.generate_report('lint_report.txt')
