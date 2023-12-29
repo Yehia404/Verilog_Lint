@@ -13,7 +13,7 @@ class VerilogLinter:
         
         
         self.check_arithmetic_overflow(verilog_code)
-        self.check_uninitialized_registers(verilog_code)
+        self.check_undefined_registers(verilog_code)
         self.check_multi_driven_registers(verilog_code)
         self.check_inferred_latches(verilog_code)
         self.check_fullORparallel_case(verilog_code)
@@ -61,7 +61,7 @@ class VerilogLinter:
                 elif operator == '/' and variable_bits[signal] < variable_bits[op1]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
     #---------------------------------------------------------------------------------------------------------------------------------------
-    def check_uninitialized_registers(self,verilog_code):
+    def check_undefined_registers(self,verilog_code):
         declaration_pattern =r'\b(?:reg|wire|output)\s*([^;]+)\b'
         for line_number, line in enumerate(verilog_code, start=1):
             matches = re.findall(declaration_pattern, line)
@@ -78,7 +78,7 @@ class VerilogLinter:
                 signal = match[0]
                 
                 if signal not in self.initialized_registers:
-                    self.errors['Uninitialized Register Usage'].append((line_number, f"Register '{signal}' used before initialization."))
+                    self.errors['Undefined Register Usage'].append((line_number, f"Register '{signal}' used before definition."))
 
     #---------------------------------------------------------------------------------------------------------------------------------------
     def check_multi_driven_registers(self, verilog_code):

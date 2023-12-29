@@ -11,6 +11,7 @@ output [1:0] r;
 reg s1;
 reg s2;
 reg s3;
+reg [1:0]ct;
 reg out;
 
 
@@ -32,23 +33,23 @@ always @(posedge clk) begin
 end
 
 //Non Full/Parallel Case and Infer Latch
-always @(a, c) begin
-    if (a)
+always @(b, c) begin
+    if (b)
       out <= 1;
     else if (c)
       out <= 0;             //Missing else (Infer Latch)
 end
 
-always @(a) begin
-  case (a)
+always @(ct) begin
+  case (ct)
     2'b00: out <= 0;
     2'b01: out <= 1;
     2'b10: out <= 0;
   endcase                 //Incomplete cases (Infer Latch) and Not Full
 end
 
-always @(b) begin
-  case (b)
+always @(ct) begin
+  case (ct)
     2'b00: out <= 0;
     2'b01: out <= 1;
     2'b10: out <= 1;
@@ -56,8 +57,8 @@ always @(b) begin
   endcase
 end
 
-always @(b) begin
-  case (b)
+always @(a) begin
+  case (a)
     2'b00: out <= 0;
     default: out <= 1;    //Complete has a default and Full
   endcase

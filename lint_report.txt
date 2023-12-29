@@ -1,13 +1,16 @@
 Arithmetic Overflow:
-	Line 18: Signal 's' may overflow.
-	Line 19: Signal 'z' may cause multiplication overflow.
-	Line 25: Signal 's3' may overflow.
-Uninitialized Register Usage:
-	Line 26: Register 's4' used before initialization.
-	Line 27: Register 's5' used before initialization.
+	Line 19: Signal 's' may overflow.
+	Line 20: Signal 'z' may cause multiplication overflow.
+	Line 26: Signal 's3' may overflow.
+Undefined Register Usage:
+	Line 27: Register 's4' used before definition.
+	Line 28: Register 's5' used before definition.
 Multi-Driven Registers:
-	Line 31: Register 's3' is assigned in multiple always blocks. Previous assignment at line 25.
+	Line 32: Register 's3' is assigned in multiple always blocks. Previous assignment at line 26.
 Inferred Latches:
-	Line 35: Inferred latch found: 'if' statement without an 'else' branch.
+	Line 36: Inferred latch found: 'if' statement without an 'else' branch.
+	Line 43: Inferred latch found: 'case' statement without a default case.
+Non Full Cases:
+	Line 43: Non Full Case Found: 'case' statement not full.
 Non Parallel Cases:
-	Line 66: Non Parallel Case Found: 'case' statement not parallel.
+	Line 67: Non Parallel Case Found: 'case' statement not parallel.
