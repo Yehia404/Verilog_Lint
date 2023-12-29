@@ -5,6 +5,7 @@ class VerilogLinter:
     def __init__(self):
         self.errors = defaultdict(list)
         self.initialized_registers = set()
+        self.variable_bits = {}
     
     def parse_verilog(self, file_path):
         with open(file_path, 'r') as f:
@@ -21,9 +22,23 @@ class VerilogLinter:
         
        
     def check_arithmetic_overflow(self, verilog_code):
-        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
-        for line_number, line in enumerate(verilog_code, start=1):
-            matches = re.findall(overflow_pattern, line)
+        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-/])\s(\w+)\b'
+        register_pattern = r'\b(input|output|reg|output \s* reg|wire)\s*(\[\d+:\d+\])?\s*(\w+)\b'
+        for variable in verilog_code:
+            matches = re.findall(register_pattern, variable)
+            for match in matches:
+                variable_name = match[2]
+                variable_bit = match[1]
+                if variable_bit == '':
+                    self.variable_bits[variable_name] = 1
+                else:
+                    num1 = int(variable_bit[1])
+                    num2 = int(variable_bit[3])
+                    result = abs(num1 - num2) + 1
+                    self.variable_bits[variable_name] = result
+        for line_number, operation in enumerate(verilog_code, start=1):
+            matches = re.findall(overflow_pattern, operation)
+
             for match in matches:
                 signal = match[0]
                 op1 = match[1]
@@ -31,11 +46,13 @@ class VerilogLinter:
                 op2 = match[3]
                 
                 # Check for overflow condition and add error if necessary
-                if operator in ['+', '-']:
+                if operator  == '+' and self.variable_bits[signal] <= max(self.variable_bits[op1], selfvariable_bits[op2]):
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
-                elif operator == '*':
+                elif operator == '-' and self.variable_bits[signal] < max(self.variable_bits[op1], self.variable_bits[op2]):
+                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
+                elif operator == '*' and self.variable_bits[signal] < self.variable_bits[op1] + self.variable_bits[op2]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
-                elif operator == '/':
+                elif operator == '/' and self.variable_bits[signal] < self.variable_bits[op1]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
         
     
@@ -203,9 +220,10 @@ class VerilogLinter:
                             (line_number, "Inferred latch found: 'if' statement without an 'else' branch."))
 
                 if re.search(r'\bcase\b', always_block):
-                    if not self.has_default_case(always_block) or not self.complete_case(always_block):
-                        self.errors['Inferred Latches'].append(
-                            (line_number, "Inferred latch found: 'case' statement without a default case."))
+                    if not (self.complete_case(always_block)):
+                        if not (self.has_default_case(always_block)):
+                            self.errors['Inferred Latches'].append(
+                                (line_number, "Inferred latch found: 'case' statement without a default case."))
 
 
     def has_else_branch(self, always_block):
@@ -216,8 +234,9 @@ class VerilogLinter:
                 return True
 
         return False
-    
+
     def complete_case(self, always_block):
+        print("hello")
         case_pattern = r'\bcase\b'
         endcase_pattern = r'\bendcase\b'
         case_values_pattern = r'\bcase\s*\((.*?)\)'
@@ -238,11 +257,11 @@ class VerilogLinter:
                 values = [value.strip() for value in case_values_str.split(',')]
 
                 # Check if all possible combinations are covered
-                num_bits = len(values[0])
+                num_bits = max[(len(value) for value in values)]
                 expected_num_values = 2 ** num_bits
                 covered_values = [value.split(':')[-1].strip() for value in values]
                 
-                if len(set(covered_values)) != expected_num_values:
+                if set(len(covered_values)) != expected_num_values:
                     return False
 
         return True
