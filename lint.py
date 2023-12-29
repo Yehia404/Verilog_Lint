@@ -11,34 +11,14 @@ class VerilogLinter:
         with open(file_path, 'r') as f:
             verilog_code = f.readlines()
         
-        # Perform parsing logic here
         
         self.check_arithmetic_overflow(verilog_code)
         self.check_uninitialized_registers(verilog_code)
         self.check_multi_driven_registers(verilog_code)
         self.check_inferred_latches(verilog_code)
         self.check_fullORparallel_case(verilog_code)
-        # Implement similar logic for other violations
         
     #---------------------------------------------------------------------------------------------------------------------------------------   
-    # def check_arithmetic_overflow(self, verilog_code):
-    #     overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
-    #     for line_number, line in enumerate(verilog_code, start=1):
-    #         matches = re.findall(overflow_pattern, line)
-    #         for match in matches:
-    #             signal = match[0]
-    #             op1 = match[1]
-    #             operator = match[2]
-    #             op2 = match[3]
-                
-    #             # Check for overflow condition and add error if necessary
-    #             if operator in ['+', '-']:
-    #                 self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
-    #             elif operator == '*':
-    #                 self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
-    #             elif operator == '/':
-    #                 self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
-    #---------------------------------------------------------------------------------------------------------------------------------------
     def check_arithmetic_overflow(self, verilog_code):
         variable_bits = {}
         overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
@@ -104,13 +84,13 @@ class VerilogLinter:
     def check_multi_driven_registers(self, verilog_code):
         register_assignments = {}
         verilog_code_str = ''.join(verilog_code)
-        # print(verilog_code_str)
+        
         lines = verilog_code_str.splitlines()
 
         for line_number, line in enumerate(lines, start=1):
             if re.search(r'\balways\s*@', line):
                 always_block = self.extract_always_block(lines, line_number)
-                # print(always_block)
+                
                 assignments = self.extract_register_assignments(always_block, line_number)
 
                 for assignment in assignments:
@@ -205,7 +185,7 @@ class VerilogLinter:
             case_block = always_block[case_match.end():]
             case_statements = re.findall(r'(\d+\'[bB][01]+)\s*:\s*', case_block, re.DOTALL)
             if case_statements:
-                condition_bits = self.declarations.get(variable_name, 1)  # Use get() with a default value of 1
+                condition_bits = self.declarations.get(variable_name, 1)  
                 if len(case_statements) < (2 ** condition_bits):
                     return False
 
@@ -225,19 +205,17 @@ class VerilogLinter:
                 if re.search(r'\bcase\b', always_block):
                     if not self.has_complete_cases(always_block):
                         if not self.has_default_case(always_block):
-                            self.errors['Non Full cases'].append(
-                                (line_number, "non full case found: 'case' statement not full."))
+                            self.errors['Non Full Cases'].append(
+                                (line_number, "Non Full Case Found: 'case' statement not full."))
                 if re.search(r'\bcase\b', always_block):
-                    if self.has_NONparallel_cases(always_block):
+                    if self.has_non_parallel_cases(always_block):
                         self.errors['Non Parallel Cases'].append(
-                                (line_number, "non parallel case found: 'case' statement not parallel."))
+                                (line_number, "Non Parallel Case Found: 'case' statement not parallel."))
                 
                        
-    #---------------------------------------------------------------------------------------------------------------------------------------
-    def has_NONparallel_cases(self, always_block):
+    def has_non_parallel_cases(self, always_block):
         case_match = re.search(r'\bcase\s*\(([^)]+)\)', always_block)        
         if case_match:
-            variable_name=case_match.group(1)
             case_block = always_block[case_match.end():]
             case_statements = re.findall(r'(\d+\'[bB][01]+)\s*:\s*', case_block, re.DOTALL)
             has_duplicates = len(case_statements) != len(set(case_statements))
@@ -246,7 +224,7 @@ class VerilogLinter:
 
         return False
     
-    
+    #---------------------------------------------------------------------------------------------------------------------------------------
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:
             for violation, lines in self.errors.items():
@@ -254,7 +232,7 @@ class VerilogLinter:
                 for line_number, line in lines:
                     f.write(f"\tLine {line_number}: {line}\n")
     
-# Example usage
+
 linter = VerilogLinter()
-linter.parse_verilog('fulladder.v')
+linter.parse_verilog('test.v')
 linter.generate_report('lint_report.txt')

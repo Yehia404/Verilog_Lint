@@ -11,8 +11,7 @@ module Test;
       out <= 0;
   end
 
-  always @(a)
-  begin
+  always @(a) begin
     case (a)
       2'b00: out <= 0;
       2'b01: out <= 1;
