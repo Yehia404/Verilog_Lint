@@ -240,7 +240,7 @@ class VerilogLinter:
         #print("hello")
         case_pattern = r'\bcase\b'
         endcase_pattern = r'\bendcase\b'
-        case_values_pattern = r'\bcase\s*\((.*?)\)'
+        case_values_pattern = r'\b2\'b([01xz]+)'
 
         case_positions = [match.start() for match in re.finditer(case_pattern, always_block)]
         endcase_positions = [match.start() for match in re.finditer(endcase_pattern, always_block)]
@@ -250,22 +250,29 @@ class VerilogLinter:
             case_body = always_block[case_pos:endcase_pos]
 
         
-            case_values_match = re.search(case_values_pattern, case_body)
-            if case_values_match:
-                case_values_str = case_values_match.group(1)
-                # Extract values inside parentheses
-                values = [value.strip() for value in case_values_str.split(',')]
-
+            case_values_matches = re.findall(case_values_pattern, case_body)
+            #print(case_values_match)
+            for case_values_str in case_values_matches:
+                 # Extract values inside parentheses
+                 values = [value.strip() for value in case_values_str.split(',')]
+                 print(values)
+            # for case_values_match in re.finditer(case_values_pattern, case_body):
+            #         case_values_str = case_values_match.group(1)
+            #         values = [value.strip() for value in case_values_str.split(',')]
+            #         print(values)
                 # Check if all possible combinations are covered
-                num_bits = 0
-                for regname in register_map.keys():
-                    if regname == values[0]:
-                        num_bits = register_map[regname]
-                expected_num_values = 2 ** num_bits
-                covered_values = [value.split(':')[-1].strip() for value in values]
+                # num_bits = 0
+                # #print(register_map)
+                # for length in register_map.keys():
+                #      if register_map[length] == values[0]:
+                #          print(length)
+                #          num_bits = length
+                #          break
+                # expected_num_values = 2 ** num_bits
+                # covered_values = [value.split(':')[-1].strip() for value in values]
                 
-                if len(covered_values) != expected_num_values:
-                    return False
+                # if len(covered_values) != expected_num_values:
+                #     return False
 
         return True
 
@@ -279,9 +286,9 @@ class VerilogLinter:
         for line in verilog_code:
             match = re.search(register_declaration_pattern, line)
             if match:
-                msb, lsb, reg_name = map(match.groups(), int)
+                msb, lsb, reg_name = *map(int, match.groups()[:2]), match.groups()[2]
                 reg_length = msb - lsb + 1
-                register_map[reg_name] = reg_length
+                register_map[reg_length] = reg_name
 
         return register_map
     
@@ -313,5 +320,5 @@ class VerilogLinter:
     
 # Example usage
 linter = VerilogLinter()
-linter.parse_verilog('infer.v')
+linter.parse_verilog('Verilog_Lint\latch.v')
 linter.generate_report('lint_report.txt')
