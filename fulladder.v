@@ -1,7 +1,7 @@
 module adder (X, Y, S);
 input    X;
 input     Y;
-output   [1:0]   S;
+output      S;
 
-assign S = X   *   Y;
+assign S = X * Y;
 endmodule
