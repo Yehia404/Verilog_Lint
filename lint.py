@@ -41,7 +41,7 @@ class VerilogLinter:
     #---------------------------------------------------------------------------------------------------------------------------------------
     def check_arithmetic_overflow(self, verilog_code):
         variable_bits = {}
-        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-/])\s(\w+)\b'
+        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-/])\s*(\w+)\b'
         register_pattern = r'\b(input|output|reg|output \s* reg|wire)\s*(\[\d+:\d+\])?\s*(\w+)\b'
         for variable in verilog_code:
             matches = re.findall(register_pattern, variable)
@@ -199,7 +199,7 @@ class VerilogLinter:
             case_statements = re.findall(r'(\d+\'[bB][01]+)\s*:\s*', case_block, re.DOTALL)
             if case_statements:
                 condition_bits = self.declarations.get(variable_name, 1)  # Use get() with a default value of 1
-                if len(case_statements) != (2 ** condition_bits):
+                if len(case_statements) < (2 ** condition_bits):
                     return False
 
         return True
@@ -218,12 +218,12 @@ class VerilogLinter:
                 if re.search(r'\bcase\b', always_block):
                     if not self.has_complete_cases(always_block):
                         if not self.has_default_case(always_block):
-                            self.errors['Full cases'].append(
-                                (line_number, "non full case  found: 'case' statement not full."))
+                            self.errors['Non Full cases'].append(
+                                (line_number, "non full case found: 'case' statement not full."))
                 if re.search(r'\bcase\b', always_block):
                     if self.has_NONparallel_cases(always_block):
-                        self.errors['Non Parallel cases'].append(
-                                (line_number, "non paralell case  found: 'case' statement not parallel."))
+                        self.errors['Non Parallel Cases'].append(
+                                (line_number, "non parallel case found: 'case' statement not parallel."))
                 
                        
     #---------------------------------------------------------------------------------------------------------------------------------------
@@ -249,5 +249,5 @@ class VerilogLinter:
     
 # Example usage
 linter = VerilogLinter()
-linter.parse_verilog('infer.v')
+linter.parse_verilog('fulladder.v')
 linter.generate_report('lint_report.txt')

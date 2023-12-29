@@ -1,4 +1,0 @@
-Inferred Latches:
-	Line 6: Inferred latch found: 'if' statement without an 'else' branch.
-	Line 14: Inferred latch found: 'case' statement without a default case.
-	Line 23: Inferred latch found: 'case' statement without a default case.
