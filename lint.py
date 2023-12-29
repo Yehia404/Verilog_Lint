@@ -68,43 +68,85 @@ class VerilogLinter:
 
 
 
+    # def check_multi_driven_registers(self, verilog_code):
+    #     register_assignments = {}
+    #     always_blocks = self.extract_always_blocks(verilog_code)
+    #     for always_block in always_blocks:
+    #         # print(always_block)
+    #         assignments = self.extract_register_assignments(always_block,verilog_code)
+
+    #         for assignment in assignments:
+    #             register_name = assignment[0]
+    #             line_number = assignment[1]
+
+    #             if register_name not in register_assignments:
+    #                 register_assignments[register_name] = line_number
+    #             else:
+    #                 previous_line_number = register_assignments[register_name]
+    #                 if previous_line_number != line_number:
+    #                     self.errors['Multi-Driven Registers'].append(
+    #                         (line_number, f"Register '{register_name}' is assigned in multiple always blocks. "
+    #                                     f"Previous assignment at line {previous_line_number}."))
+
+    
+    # def extract_always_blocks(self, verilog_code):
+    #     verilog_code_str = ''.join(verilog_code)  # Join the lines into a single string
+    #     always_block_pattern = r'\balways\s+@.*?\bend\b'
+    #     always_blocks = re.findall(always_block_pattern, verilog_code_str, re.DOTALL)
+    #     return always_blocks
+
+    # def extract_register_assignments(self, always_block):
+    #     register_assignment_pattern = r'\b(\w+)\s*=\s*[^;]+\b'
+    #     assignments = re.findall(register_assignment_pattern, always_block)
+    #     line_number = always_block.count('\n') + 1
+    #     return [(assignment, line_number) for assignment in assignments]
+
     def check_multi_driven_registers(self, verilog_code):
         register_assignments = {}
-        always_blocks = self.extract_always_blocks(verilog_code)
-        for always_block in always_blocks:
-            # print(always_block)
-            assignments = self.extract_register_assignments(always_block)
-            # print(assignments)
+        verilog_code_str = ''.join(verilog_code)
+        # print(verilog_code_str)
+        lines = verilog_code_str.splitlines()
 
-            for assignment in assignments:
-                register_name = assignment[0]
-                line_number = assignment[1]
+        for line_number, line in enumerate(lines, start=1):
+            if re.search(r'\balways\s*@', line):
+                always_block = self.extract_always_block(lines, line_number)
+                # print(always_block)
+                assignments = self.extract_register_assignments(always_block, line_number)
 
-                if register_name not in register_assignments:
-                    register_assignments[register_name] = line_number
-                else:
-                    previous_line_number = register_assignments[register_name]
-                    if previous_line_number != line_number:
-                        self.errors['Multi-Driven Registers'].append(
-                            (line_number, f"Register '{register_name}' is assigned in multiple always blocks. "
-                                        f"Previous assignment at line {previous_line_number}."))
+                for assignment in assignments:
+                    register_name = assignment[0]
+                    register_line_number = assignment[1]
 
-    
-    def extract_always_blocks(self, verilog_code):
-        verilog_code_str = ''.join(verilog_code)  # Join the lines into a single string
-        always_block_pattern = r'\balways\s+@.*?\bend\b'
-        always_blocks = re.findall(always_block_pattern, verilog_code_str, re.DOTALL)
-        return always_blocks
+                    if register_name not in register_assignments:
+                        register_assignments[register_name] = register_line_number
+                    else:
+                        previous_line_number = register_assignments[register_name]
+                        if previous_line_number != register_line_number:
+                            self.errors['Multi-Driven Registers'].append(
+                                (register_line_number, f"Register '{register_name}' is assigned in multiple always blocks. "
+                                                       f"Previous assignment at line {previous_line_number}."))
 
+    def extract_always_block(self, lines, line_number):
+        always_block = []
+        indent_level = self.get_indent_level(lines[line_number - 1])
+        for line in lines[line_number - 1:]:
+            if self.get_indent_level(line) <= indent_level and re.search(r'\bend\b', line):
+                always_block.append(line)
+                break
+            always_block.append(line)
 
+        return ''.join(always_block)
 
-    def extract_register_assignments(self, always_block):
+    def get_indent_level(self, line):
+        return len(line) - len(line.lstrip())
+
+    def extract_register_assignments(self, always_block, line_number):
         register_assignment_pattern = r'\b(\w+)\s*=\s*[^;]+\b'
         assignments = re.findall(register_assignment_pattern, always_block)
-        print(assignments)
-        line_number = always_block.count('\n') + 1
-        return [(assignment, line_number) for assignment in assignments]
-    
+        return [(assignment, line_number+1) for assignment in assignments]
+
+
+
     
     # def check_non_full_parallel_case(self, verilog_code):
     #     non_full_parallel_patterns = [

@@ -1,0 +1,3 @@
+Multi-Driven Registers:
+	Line 13: Register 'reg1' is assigned in multiple always blocks. Previous assignment at line 6.
+	Line 16: Register 'reg2' is assigned in multiple always blocks. Previous assignment at line 10.
