@@ -5,6 +5,7 @@ class VerilogLinter:
     def __init__(self):
         self.errors = defaultdict(list)
         self.initialized_registers = set()
+        self.declarations = {}
 
     def parse_verilog(self, file_path):
         with open(file_path, 'r') as f:
@@ -14,16 +15,48 @@ class VerilogLinter:
         
         self.check_arithmetic_overflow(verilog_code)
         self.check_uninitialized_registers(verilog_code)
-        # self.check_non_full_parallel_case(verilog_code)
         self.check_multi_driven_registers(verilog_code)
         self.check_inferred_latches(verilog_code)
         # Implement similar logic for other violations
         
     #---------------------------------------------------------------------------------------------------------------------------------------   
+    # def check_arithmetic_overflow(self, verilog_code):
+    #     overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
+    #     for line_number, line in enumerate(verilog_code, start=1):
+    #         matches = re.findall(overflow_pattern, line)
+    #         for match in matches:
+    #             signal = match[0]
+    #             op1 = match[1]
+    #             operator = match[2]
+    #             op2 = match[3]
+                
+    #             # Check for overflow condition and add error if necessary
+    #             if operator in ['+', '-']:
+    #                 self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
+    #             elif operator == '*':
+    #                 self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
+    #             elif operator == '/':
+    #                 self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
+    #---------------------------------------------------------------------------------------------------------------------------------------
     def check_arithmetic_overflow(self, verilog_code):
-        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
-        for line_number, line in enumerate(verilog_code, start=1):
-            matches = re.findall(overflow_pattern, line)
+        variable_bits = {}
+        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-/])\s(\w+)\b'
+        register_pattern = r'\b(input|output|reg|output \s* reg|wire)\s*(\[\d+:\d+\])?\s*(\w+)\b'
+        for variable in verilog_code:
+            matches = re.findall(register_pattern, variable)
+            for match in matches:
+                variable_name = match[2]
+                variable_bit = match[1]
+                if variable_bit == '':
+                    variable_bits[variable_name] = 1
+                else:
+                    num1 = int(variable_bit[1])
+                    num2 = int(variable_bit[3])
+                    result = abs(num1 - num2) + 1
+                    variable_bits[variable_name] = result
+        for line_number, operation in enumerate(verilog_code, start=1):
+            matches = re.findall(overflow_pattern, operation)
+
             for match in matches:
                 signal = match[0]
                 op1 = match[1]
@@ -31,14 +64,14 @@ class VerilogLinter:
                 op2 = match[3]
                 
                 # Check for overflow condition and add error if necessary
-                if operator in ['+', '-']:
+                if operator  == '+' and variable_bits[signal] <= max(variable_bits[op1], variable_bits[op2]):
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
-                elif operator == '*':
+                elif operator == '-' and variable_bits[signal] < max(variable_bits[op1], variable_bits[op2]):
+                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
+                elif operator == '*' and variable_bits[signal] < variable_bits[op1] + variable_bits[op2]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
-                elif operator == '/':
+                elif operator == '/' and variable_bits[signal] < variable_bits[op1]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
-        
-    
     #---------------------------------------------------------------------------------------------------------------------------------------
     def check_uninitialized_registers(self,verilog_code):
         declaration_pattern =r'\b(?:reg|wire|output)\s*([^;]+)\b'
@@ -105,93 +138,72 @@ class VerilogLinter:
         return [(assignment, line_number+1) for assignment in assignments]
 
     #---------------------------------------------------------------------------------------------------------------------------------------
-
     
-    # def check_non_full_parallel_case(self, verilog_code):
-    #     non_full_parallel_patterns = [
-    #         (r'\bif\s*\([^)]+\)\s*begin\s*(?:\n\s*[^{]+\n)+\s*end\b', "If statement"),
-    #         (r'\bcase\s*\([^)]+\)\s*(?:\n\s*[^{]+\n)+\s*endcase\b', "Case statement")
-    #     ]
+    def check_inferred_latches(self, verilog_code):
+        verilog_code_str = ''.join(verilog_code)
+        lines = verilog_code_str.splitlines()
 
-    #     for line_number, line in enumerate(verilog_code, start=1):
-    #         for pattern, violation_type in non_full_parallel_patterns:
-    #             matches = re.findall(pattern, line, re.MULTILINE)
-    #             for match in matches:
-    #                 body = match.strip()
-    #                 body_lines = body.split('\n')
-    #                 body_lines = [line.strip() for line in body_lines if line.strip() != '']
+        self.process_declarations(lines)
 
-    #                 if violation_type == "If statement":
-    #                     # Check if the if statement is incomplete (missing else part)
-    #                     if "else" not in body:
-    #                         self.errors['Non Full/Parallel'].append((line_number, "Incomplete if statement (missing else part)."))
+        for line_number, line in enumerate(lines, start=1):
+            if re.search(r'\balways\s+@', line):
+                always_block = self.extract_always_block(lines, line_number)
+                if re.search(r'\bif\b', always_block):
+                    if not self.has_else_branch(always_block):
+                        self.errors['Inferred Latches'].append(
+                            (line_number, "Inferred latch found: 'if' statement without an 'else' branch."))
 
-    #                     # Check if there are matching conditions in if and elseif
-    #                     conditions = [re.search(r'if\s*\((.*?)\)', line).group(1) for line in body_lines if "if" in line]
-    #                     if len(set(conditions)) != len(conditions):
-    #                         self.errors['Non Full/Parallel'].append((line_number, "Matching conditions in if statement."))
+                if re.search(r'\bcase\b', always_block):
+                    if not self.has_complete_cases(always_block):
+                         
+                        if not self.has_default_case(always_block):
+                            self.errors['Inferred Latches'].append(
+                                (line_number, "Inferred latch found: 'case' statement without a default case."))
+                       
 
-    #                 elif violation_type == "Case statement":
-    #                     # Check if the case statement has a missing default or non-full cases
-    #                     case_body = body_lines[1:-1]  # Exclude the first and last lines (case and endcase)
-    #                     num_cases = len(case_body)
-    #                     has_default = any("default" in line for line in case_body)
-
-    #                     if num_cases == 0 or not has_default:
-    #                         self.errors['Non Full/Parallel'].append((line_number, "Incomplete case statement (missing default or cases)."))
-
-    #                     # Check if there are matching cases
-    #                     cases = [re.search(r'(\bcase\b|\bdefault\b)\s*\((.*?)\)', line).group(2) for line in case_body]
-    #                     if len(set(cases)) != len(cases):
-    #                         self.errors['Non Full/Parallel'].append((line_number, "Matching cases in case statement."))
+    def process_declarations(self, lines):
+        for line in lines:
+            match = re.search(r'\breg\b\s*\[(\d+):(\d+)\]\s*(\w+)\s*;', line)
+            if match:
+                start_bit = int(match.group(1))
+                end_bit = int(match.group(2))
+                name = match.group(3)
+                size = start_bit - end_bit + 1
+                self.declarations[name] = size
+            if re.search(r'\bendmodule\b', line):
+                break
 
 
-    # def check_inferred_latches(self, verilog_code):
-    #     verilog_code_str = ''.join(verilog_code)
-    #     lines = verilog_code_str.splitlines()
+    def has_else_branch(self, always_block):
+        if_match = re.findall(r'\bif\s*\([^)]+\)', always_block)
+        for if_statement in if_match:
+            if re.search(r'else', if_statement):
+                return True
 
-    #     for line_number, line in enumerate(lines, start=1):
-    #         if re.search(r'\balways\s+@', line):
-    #             always_block = self.extract_always_block(lines, line_number)
+        return False
 
-    #             if re.search(r'\bif\b', always_block):
-    #                 if not self.has_else_branch(always_block):
-    #                     self.errors['Inferred Latches'].append(
-    #                         (line_number, "Inferred latch found: 'if' statement without an 'else' branch."))
+    def has_default_case(self, always_block):
+        case_match = re.search(r'\bcase\s*\([^)]+\)', always_block)
+        if case_match:
+            case_block = always_block[case_match.end():]
+            return re.search(r'\bdefault\b', case_block)
 
-    #             if re.search(r'\bcase\b', always_block):
-    #                 if not self.has_default_case(always_block):
-    #                     self.errors['Inferred Latches'].append(
-    #                         (line_number, "Inferred latch found: 'case' statement without a default case."))
+        return True
 
+    def has_complete_cases(self, always_block):
+        case_match = re.search(r'\bcase\s*\(([^)]+)\)', always_block)        
+        if case_match:
+            variable_name=case_match.group(1)
+            case_block = always_block[case_match.end():]
+            case_statements = re.findall(r'(\d+\'[bB][01]+)\s*:\s*', case_block, re.DOTALL)
+            if case_statements:
+                condition_bits = self.declarations.get(variable_name, 1)  # Use get() with a default value of 1
+                if len(case_statements) != (2 ** condition_bits):
+                    return False
 
-    # def has_else_branch(self, always_block):
-    #     if_match = re.findall(r'\bif\s*\([^)]+\)', always_block)
+        return True
 
-    #     for if_statement in if_match:
-    #         if re.search(r'else', if_statement):
-    #             return True
-
-    #     return False
-
-    # def has_default_case(self, always_block):
-    #     case_match = re.search(r'\bcase\s*\([^)]+\)', always_block)
-    #     if case_match:
-    #         case_block = always_block[case_match.end():]
-    #         return re.search(r'\bdefault\b', case_block)
-
-    #     return True
-    
-
-
-
-
-
-
-
-
-
-
+    #---------------------------------------------------------------------------------------------------------------------------------------
 
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:
