@@ -195,6 +195,7 @@ class VerilogLinter:
         for line_number, line in enumerate(lines, start=1):
             if re.search(r'\balways\s+@', line):
                 always_block = self.extract_always_block(lines, line_number)
+                #print(always_block)
 
                 if re.search(r'\bif\b', always_block):
                     if not self.has_else_branch(always_block):
@@ -202,7 +203,7 @@ class VerilogLinter:
                             (line_number, "Inferred latch found: 'if' statement without an 'else' branch."))
 
                 if re.search(r'\bcase\b', always_block):
-                    if not self.has_default_case(always_block):
+                    if not self.has_default_case(always_block) or not self.complete_case(always_block):
                         self.errors['Inferred Latches'].append(
                             (line_number, "Inferred latch found: 'case' statement without a default case."))
 
@@ -215,6 +216,38 @@ class VerilogLinter:
                 return True
 
         return False
+    
+    def complete_case(self, always_block):
+        case_pattern = r'\bcase\b'
+        endcase_pattern = r'\bendcase\b'
+        case_values_pattern = r'\bcase\s*\((.*?)\)'
+        print("hello")
+
+        case_positions = [match.start() for match in re.finditer(case_pattern, always_block)]
+        endcase_positions = [match.start() for match in re.finditer(endcase_pattern, always_block)]
+
+        for case_pos in case_positions:
+            endcase_pos = next(pos for pos in endcase_positions if pos > case_pos)
+            case_body = always_block[case_pos:endcase_pos]
+
+        
+            case_values_match = re.search(case_values_pattern, case_body)
+            if case_values_match:
+                case_values_str = case_values_match.group(1)
+                # Extract values inside parentheses
+                values = [value.strip() for value in case_values_str.split(',')]
+
+                # Check if all possible combinations are covered
+                num_bits = len(values[0])
+                expected_num_values = 2 ** num_bits
+                covered_values = [value.split(':')[-1].strip() for value in values]
+                
+                if len(set(covered_values)) != expected_num_values:
+                    return False
+
+        return True
+
+        
 
     def has_default_case(self, always_block):
         case_match = re.search(r'\bcase\s*\([^)]+\)', always_block)
