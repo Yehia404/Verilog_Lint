@@ -46,7 +46,7 @@ class VerilogLinter:
                 op2 = match[3]
                 
                 # Check for overflow condition and add error if necessary
-                if operator  == '+' and self.variable_bits[signal] <= max(self.variable_bits[op1], selfvariable_bits[op2]):
+                if operator  == '+' and self.variable_bits[signal] <= max(self.variable_bits[op1], self.variable_bits[op2]):
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
                 elif operator == '-' and self.variable_bits[signal] < max(self.variable_bits[op1], self.variable_bits[op2]):
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
@@ -208,6 +208,7 @@ class VerilogLinter:
     def check_inferred_latches(self, verilog_code):
         verilog_code_str = ''.join(verilog_code)
         lines = verilog_code_str.splitlines()
+        register_map = self.generate_register_map(verilog_code)
 
         for line_number, line in enumerate(lines, start=1):
             if re.search(r'\balways\s+@', line):
@@ -220,7 +221,7 @@ class VerilogLinter:
                             (line_number, "Inferred latch found: 'if' statement without an 'else' branch."))
 
                 if re.search(r'\bcase\b', always_block):
-                    if not (self.complete_case(always_block)):
+                    if not (self.complete_case(always_block,register_map)):
                         if not (self.has_default_case(always_block)):
                             self.errors['Inferred Latches'].append(
                                 (line_number, "Inferred latch found: 'case' statement without a default case."))
@@ -235,12 +236,11 @@ class VerilogLinter:
 
         return False
 
-    def complete_case(self, always_block):
-        print("hello")
+    def complete_case(self, always_block,register_map):
+        #print("hello")
         case_pattern = r'\bcase\b'
         endcase_pattern = r'\bendcase\b'
         case_values_pattern = r'\bcase\s*\((.*?)\)'
-        print("hello")
 
         case_positions = [match.start() for match in re.finditer(case_pattern, always_block)]
         endcase_positions = [match.start() for match in re.finditer(endcase_pattern, always_block)]
@@ -257,17 +257,34 @@ class VerilogLinter:
                 values = [value.strip() for value in case_values_str.split(',')]
 
                 # Check if all possible combinations are covered
-                num_bits = max[(len(value) for value in values)]
+                num_bits = 0
+                for regname in register_map.keys():
+                    if regname == values[0]:
+                        num_bits = register_map[regname]
                 expected_num_values = 2 ** num_bits
                 covered_values = [value.split(':')[-1].strip() for value in values]
                 
-                if set(len(covered_values)) != expected_num_values:
+                if len(covered_values) != expected_num_values:
                     return False
 
         return True
 
         
+    def generate_register_map(self, verilog_code):
+        register_map = {}
 
+        # Assuming registers are declared like: reg [7:0] reg_name;
+        register_declaration_pattern = r'\breg\b\s*\[(\d+):(\d+)\]\s*(\w+)\s*;'
+
+        for line in verilog_code:
+            match = re.search(register_declaration_pattern, line)
+            if match:
+                msb, lsb, reg_name = map(match.groups(), int)
+                reg_length = msb - lsb + 1
+                register_map[reg_name] = reg_length
+
+        return register_map
+    
     def has_default_case(self, always_block):
         case_match = re.search(r'\bcase\s*\([^)]+\)', always_block)
         if case_match:

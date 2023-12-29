@@ -1,2 +1,1 @@
-Inferred Latches:
-	Line 6: Inferred latch found: 'if' statement without an 'else' branch.
+
