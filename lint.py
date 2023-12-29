@@ -41,7 +41,7 @@ class VerilogLinter:
     #---------------------------------------------------------------------------------------------------------------------------------------
     def check_arithmetic_overflow(self, verilog_code):
         variable_bits = {}
-        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-/])\s*(\w+)\b'
+        overflow_pattern = r'\b(\w+)\s*=\s*(\w+)\s*([+\-*/])\s*(\w+)\b'
         register_pattern = r'\b(input|output|reg|output \s* reg|wire)\s*(\[\d+:\d+\])?\s*(\w+)\b'
         for variable in verilog_code:
             matches = re.findall(register_pattern, variable)
@@ -69,8 +69,15 @@ class VerilogLinter:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
                 elif operator == '-' and variable_bits[signal] < max(variable_bits[op1], variable_bits[op2]):
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may overflow."))
-                elif operator == '*' and variable_bits[signal] < variable_bits[op1] + variable_bits[op2]:
-                    self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
+
+                elif operator == '*':
+                    if (variable_bits[op1] == 1 or variable_bits[op2] == 1):
+                        if variable_bits[signal] < max(variable_bits[op1], variable_bits[op2]):
+                            self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
+                    else :
+                        if variable_bits[signal] < variable_bits[op1] + variable_bits[op2]:
+                            self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause multiplication overflow."))
+                    
                 elif operator == '/' and variable_bits[signal] < variable_bits[op1]:
                     self.errors['Arithmetic Overflow'].append((line_number, f"Signal '{signal}' may cause division overflow."))
     #---------------------------------------------------------------------------------------------------------------------------------------

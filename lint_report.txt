@@ -1,0 +1,3 @@
+Arithmetic Overflow:
+	Line 7: Signal 'S' may overflow.
+	Line 8: Signal 'Z' may cause multiplication overflow.
