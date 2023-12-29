@@ -17,6 +17,7 @@ class VerilogLinter:
         self.check_uninitialized_registers(verilog_code)
         self.check_multi_driven_registers(verilog_code)
         self.check_inferred_latches(verilog_code)
+        self.check_fullORparallel_case(verilog_code)
         # Implement similar logic for other violations
         
     #---------------------------------------------------------------------------------------------------------------------------------------   
@@ -204,7 +205,41 @@ class VerilogLinter:
         return True
 
     #---------------------------------------------------------------------------------------------------------------------------------------
+    def check_fullORparallel_case(self,verilog_code):
+        verilog_code_str = ''.join(verilog_code)
+        lines = verilog_code_str.splitlines()
 
+        self.process_declarations(lines)
+
+        for line_number, line in enumerate(lines, start=1):
+            if re.search(r'\balways\s+@', line):
+                always_block = self.extract_always_block(lines, line_number)
+
+                if re.search(r'\bcase\b', always_block):
+                    if not self.has_complete_cases(always_block):
+                        if not self.has_default_case(always_block):
+                            self.errors['Full cases'].append(
+                                (line_number, "non full case  found: 'case' statement not full."))
+                if re.search(r'\bcase\b', always_block):
+                    if self.has_NONparallel_cases(always_block):
+                        self.errors['Non Parallel cases'].append(
+                                (line_number, "non paralell case  found: 'case' statement not parallel."))
+                
+                       
+    #---------------------------------------------------------------------------------------------------------------------------------------
+    def has_NONparallel_cases(self, always_block):
+        case_match = re.search(r'\bcase\s*\(([^)]+)\)', always_block)        
+        if case_match:
+            variable_name=case_match.group(1)
+            case_block = always_block[case_match.end():]
+            case_statements = re.findall(r'(\d+\'[bB][01]+)\s*:\s*', case_block, re.DOTALL)
+            has_duplicates = len(case_statements) != len(set(case_statements))
+            if has_duplicates:
+                return True  
+
+        return False
+    
+    
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:
             for violation, lines in self.errors.items():

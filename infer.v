@@ -33,6 +33,7 @@ module Test;
     case (a)
       2'b00: out <= 0;
       2'b01: out <= 1;
+      2'b01: out <= 1;
       2'b10: out <= 0;
       2'b11: out <= 1;
     endcase
