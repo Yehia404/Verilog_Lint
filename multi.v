@@ -2,7 +2,7 @@ module Test;
   reg [7:0] reg1;
   reg [7:0] reg2;
 
-  always@ (posedge clk)begin
+  always @ (posedge clk)begin
     reg1 = data1;
   end
 

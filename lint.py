@@ -108,17 +108,14 @@ class VerilogLinter:
 
     def extract_always_block(self, lines, line_number):
         always_block = []
-        indent_level = self.get_indent_level(lines[line_number - 1])
         for line in lines[line_number - 1:]:
-            if self.get_indent_level(line) <= indent_level and re.search(r'\bend\b', line):
+            if re.search(r'\bend\b', line):
                 always_block.append(line)
                 break
             always_block.append(line)
 
         return ''.join(always_block)
 
-    def get_indent_level(self, line):
-        return len(line) - len(line.lstrip())
 
     def extract_register_assignments(self, always_block, line_number):
         register_assignment_pattern = r'\b(\w+)\s*=\s*[^;]+\b'
