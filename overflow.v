@@ -1,4 +1,4 @@
-module adder (X, Y, S, Z);
+module overflow (X, Y, S, Z);
 input  X;
 input  [1:0]Y;
 output S;
