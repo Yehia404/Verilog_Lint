@@ -241,13 +241,13 @@ class VerilogLinter:
                     initialized_regs.add(variable)
 
         for line_number, line in enumerate(verilog_code, start=1):
-            # reg_usage = re.findall(r'=\s*([a-zA-Z_]\w*)', line)
             reg_usage = re.findall(r'=\s*([a-zA-Z_]\w*(?:\s*(?:[+\-*/]|and|or)\s*[a-zA-Z_]\w*)*)', line)
             for assignment in reg_usage:
-                variable = assignment
-                if variable not in initialized_regs:
-                    self.errors['Uninitialized Register Case'].append(
-                        (line_number, f"Uninitialized register '{variable}' used before initialization."))
+                variables = re.findall(r'[a-zA-Z_]\w*', assignment)
+                for variable in variables:
+                    if variable not in initialized_regs:
+                        self.errors['Uninitialized Register Case'].append(
+                            (line_number, f"Uninitialized register '{variable}' used before initialization."))
 
     def reg_initialized(self, line):
         match = re.search(r'reg\s+(?:\[\d+:\d+\])?\s*(\w+)\s*=', line)
