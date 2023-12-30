@@ -17,7 +17,7 @@ class VerilogLinter:
         self.check_multi_driven_registers(verilog_code)
         self.check_inferred_latches(verilog_code)
         self.check_fullORparallel_case(verilog_code)
-        
+        self.check_uninitialized_registers(verilog_code)
     #---------------------------------------------------------------------------------------------------------------------------------------   
     def check_arithmetic_overflow(self, verilog_code):
         variable_bits = {}
@@ -224,6 +224,37 @@ class VerilogLinter:
 
         return False
     
+    #---------------------------------------------------------------------------------------------------------------------------------------
+    def check_uninitialized_registers(self, verilog_code):
+        initialized_regs = set()
+
+        for line_number, line in enumerate(verilog_code, start=1):
+            reg_name = self.reg_initialized(line)
+            if reg_name:
+                initialized_regs.add(reg_name)
+
+            reg_usage = re.findall(r'(\w+)\s*=\s*([^;]+)', line)
+            for assignment in reg_usage:
+                variable = assignment[0]
+                value = assignment[1]
+                if value.isnumeric() and variable not in initialized_regs:
+                    initialized_regs.add(variable)
+
+        for line_number, line in enumerate(verilog_code, start=1):
+            # reg_usage = re.findall(r'=\s*([a-zA-Z_]\w*)', line)
+            reg_usage = re.findall(r'=\s*([a-zA-Z_]\w*(?:\s*(?:[+\-*/]|and|or)\s*[a-zA-Z_]\w*)*)', line)
+            for assignment in reg_usage:
+                variable = assignment
+                if variable not in initialized_regs:
+                    self.errors['Uninitialized Register Case'].append(
+                        (line_number, f"Uninitialized register '{variable}' used before initialization."))
+
+    def reg_initialized(self, line):
+        match = re.search(r'reg\s+(?:\[\d+:\d+\])?\s*(\w+)\s*=', line)
+        if match:
+            return match.group(1)
+        return None
+
     #---------------------------------------------------------------------------------------------------------------------------------------
     def generate_report(self, report_file):
         with open(report_file, 'w') as f:

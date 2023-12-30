@@ -14,3 +14,9 @@ Non Full Cases:
 	Line 43: Non Full Case Found: 'case' statement not full.
 Non Parallel Cases:
 	Line 67: Non Parallel Case Found: 'case' statement not parallel.
+Uninitialized Register Case:
+	Line 19: Uninitialized register 'x + y' used before initialization.
+	Line 20: Uninitialized register 'a * b' used before initialization.
+	Line 21: Uninitialized register 'c + d' used before initialization.
+	Line 26: Uninitialized register 's1 + s2' used before initialization.
+	Line 32: Uninitialized register 's1' used before initialization.

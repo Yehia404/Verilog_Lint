@@ -21,7 +21,7 @@ assign z = a * b;   // Multiplication Overflow
 assign r = c + d;   // No Overflow
 
 
-//Uninitialized Registers and Multi-Driven Registers
+//Undefined Registers and Multi-Driven Registers
 always @(posedge clk) begin
     s3 = s1 + s2;
     s4 = s5  
