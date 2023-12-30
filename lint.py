@@ -4,7 +4,7 @@ from collections import defaultdict
 class VerilogLinter:
     def __init__(self):
         self.errors = defaultdict(list)
-        self.initialized_registers = set()
+        self.defined_registers = set()
         self.declarations = {}
 
     def parse_verilog(self, file_path):
@@ -68,7 +68,7 @@ class VerilogLinter:
             for match in matches:
                 signal_names = re.findall(r'\b(\w+)\b', match)
                 for signal in signal_names:
-                    self.initialized_registers.add(signal)
+                    self.defined_registers.add(signal)
                         
                 
         usage_pattern = r'\b(\w+)\s*=\s*([^;]+)\b'
@@ -77,7 +77,7 @@ class VerilogLinter:
             for match in matches:
                 signal = match[0]
                 
-                if signal not in self.initialized_registers:
+                if signal not in self.defined_registers:
                     self.errors['Undefined Register Usage'].append((line_number, f"Register '{signal}' used before definition."))
 
     #---------------------------------------------------------------------------------------------------------------------------------------
