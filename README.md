@@ -12,7 +12,7 @@ In this project the students will design static Verilog Design Checker, the chec
 **We covered the following violations:**  
 * Arithmetic Overflow   
 * Un-initialized Register
-* Un-defined Register
+* Un-defined Register (**Additional**)
 * Multi-Driven Bus/Register 
 * Non Full/Parallel Case 
 * Infer Latch
